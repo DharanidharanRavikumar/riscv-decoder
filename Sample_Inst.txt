@@ -1,0 +1,55 @@
+uint32_t test_instructions[] =
+{
+    // R-Type
+    0x003100B3, // ADD
+    0x403100B3, // SUB
+    0x003110B3, // SLL
+    0x003120B3, // SLT
+    0x003130B3, // SLTU
+    0x003140B3, // XOR
+    0x003150B3, // SRL
+    0x403150B3, // SRA
+    0x003160B3, // OR
+    0x003170B3, // AND
+
+    // I-Type arithmetic
+    0x00A10093, // ADDI
+    0x00A12093, // SLTI
+    0x00A13093, // SLTIU
+    0x00A14093, // XORI
+    0x00A16093, // ORI
+    0x00A17093, // ANDI
+    0x00311093, // SLLI
+    0x00315093, // SRLI
+    0x40315093, // SRAI
+
+    // Loads
+    0x00010083, // LB
+    0x00011083, // LH
+    0x00012083, // LW
+    0x00014083, // LBU
+    0x00015083, // LHU
+
+    // Stores
+    0x00310023, // SB
+    0x00311023, // SH
+    0x00312023, // SW
+
+    // Branches
+    0x00208863, // BEQ
+    0x00209863, // BNE
+    0x0020C863, // BLT
+    0x0020D863, // BGE
+    0x0020E863, // BLTU
+    0x0020F863, // BGEU
+
+    // U-Type
+    0x123450B7, // LUI
+    0x12345097, // AUIPC
+
+    // J-Type
+    0x010000EF, // JAL
+
+    // I-Type jump
+    0x000100E7  // JALR
+};
