@@ -72,9 +72,10 @@ The decoder extracts fields according to the standard RV32I bit layouts:
 | **R-type** | `funct7` | `rs2` | `rs1` | `funct3` | `rd` | `opcode` |
 | **I-type** | `imm[11:0]` | `rs1` | `funct3` | `rd` | `opcode` |
 | **S-type** | `imm[11:5]` | `rs2` | `rs1` | `funct3` | `imm[4:0]` | `opcode` |
-| **B-type** | `imm[12|10:5]` | `rs2` | `rs1` | `funct3` | `imm[4:1|11]` | `opcode` |
+| **B-type** | `imm[12\|10:5]` | `rs2` | `rs1` | `funct3` | `imm[4:1\|11]` | `opcode` |
 | **U-type** | `imm[31:12]` | `rd` | `opcode` |
-| **J-type** | `imm[20|10:1|11|19:12]` | `rd` | `opcode` |
+| **J-type** | `imm[20\|10:1\|11\|19:12]` | `rd` | `opcode` |
+
 
 ### Internal Data Representation (`decode_instruction`)
 
