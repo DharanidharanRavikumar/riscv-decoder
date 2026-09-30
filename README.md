@@ -1,144 +1,217 @@
-﻿# RISC-V RV32I Instruction Decoder
+﻿# RISC-V RV32I Instruction Decoder (in C)
 
-[![C11](https://img.shields.io/badge/Language-C11-blue.svg)](https://en.wikipedia.org/wiki/C11_(C_specification))
-[![Architecture](https://img.shields.io/badge/Architecture-RISC--V%20(RV32I)-red.svg)](https://riscv.org/)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+![Language](https://img.shields.io/badge/language-C-blue.svg)
+![ISA](https://img.shields.io/badge/ISA-RV32I-007acc.svg)
+![Status](https://img.shields.io/badge/status-Experimental%20project-gold.svg)
+![License](https://img.shields.io/badge/license-MIT-green.svg)
 
-A lightweight, modular, and bit-accurate 32-bit **RISC-V (RV32I Base Integer Instruction Set)** instruction decoder written in C.
+A from-scratch RISC-V RV32I instruction decoder written in C. It takes a 32-bit RISC-V machine instruction as hexadecimal input, identifies its instruction format, extracts the encoded fields, reconstructs immediates, and determines the corresponding instruction.
 
-This tool disassembles raw 32-bit hexadecimal machine code into its architectural components—including instruction type, mnemonic name, register operands (`rd`, `rs1`, `rs2`), opcode, `funct3`, `funct7`, immediate values (with proper sign extension and non-contiguous bit reconstruction), and shift amounts (`shamt`).
+The decoder currently handles the major RV32I instruction formats: **R, I, S, B, U, and J**.
+
+**Decoded fields:** `opcode`, `rd`, `rs1`, `rs2`, `funct3`, `funct7`, `immediate`, and `shamt`.
+
+> **Note:** Not every field is meaningful for every instruction format. The decoder interprets fields according to the corresponding RV32I encoding layout.
+
+![Decoder Demo](assets/demo.png)
 
 ---
 
-## Table of Contents
+## Contents
 
-- [Features](#features)
-- [Supported Instruction Set](#supported-instruction-set)
-- [RISC-V Instruction Formats](#risc-v-instruction-formats)
-- [Project Structure](#project-structure)
-- [Getting Started](#getting-started)
-  - [Prerequisites](#prerequisites)
-  - [Building the Project](#building-the-project)
-  - [Running the Decoder](#running-the-decoder)
-- [Example Usage & Output](#example-usage--output)
-- [API Reference (Library Usage)](#api-reference-library-usage)
-- [Test Vectors](#test-vectors)
-- [Roadmap](#roadmap)
-- [Author](#author)
+- [Requirements](#requirements)
+- [Getting started](#getting-started)
+- [How it works](#how-it-works)
+- [Architecture / Workflow](#architecture--workflow)
+- [Project structure](#project-structure)
+- [Relationship to Project 1](#relationship-to-project-1)
+- [Example](#example)
+- [Challenges I ran into](#challenges-i-ran-into)
+- [What I'd add next](#what-id-add-next)
 - [License](#license)
 
 ---
 
-## Features
+## Requirements
 
-- **Full RV32I Coverage**: Decodes all standard RV32I unprivileged base integer instructions (R, I, S, B, U, and J types).
-- **Bit-Accurate Immediate Decoding**: Correctly reconstructs and sign-extends non-contiguous immediate formats:
-  - **S-Type**: Split 12-bit signed immediate (`imm[11:5]` and `imm[4:0]`).
-  - **B-Type**: Scrambled 13-bit branch offset (`imm[12]`, `imm[11]`, `imm[10:5]`, `imm[4:1]`).
-  - **U-Type**: 20-bit upper immediate aligned to bit 12 (`imm[31:12]`).
-  - **J-Type**: Scrambled 21-bit jump offset (`imm[20]`, `imm[19:12]`, `imm[11]`, `imm[10:1]`).
-- **Clean Decoupled Architecture**: Core decoding logic (`decoder.c`, `decoder.h`) is completely separated from the interactive CLI driver (`main.c`), making it easy to embed into custom CPU emulators, cycle-accurate simulators, or disassemblers.
-- **Interactive Terminal REPL**: Fast prompt for testing arbitrary 32-bit hexadecimal instructions in real-time.
-- **Comprehensive Verification Suite**: Included reference vectors in `Sample_Inst.txt` for validating instruction decoding.
+This project uses `make`, `gcc`, and a Linux-style shell.
 
----
+- **Linux:** `gcc` and `make` can be installed via your package manager.
+- **macOS:** install the Xcode command-line tools (`xcode-select --install`).
+- **Windows:** use [WSL](https://learn.microsoft.com/en-us/windows/wsl/install) and run the commands below inside the WSL/Ubuntu terminal, not PowerShell or CMD.
 
-## Supported Instruction Set
-
-The decoder supports 40+ instructions from the **RV32I Base Integer Instruction Set**:
-
-| Format | Category | Instructions Supported |
-| :--- | :--- | :--- |
-| **R-Type** | Arithmetic & Logical (Reg-Reg) | `ADD`, `SUB`, `SLL`, `SLT`, `SLTU`, `XOR`, `SRL`, `SRA`, `OR`, `AND` |
-| **I-Type** | Arithmetic & Logical (Immediate) | `ADDI`, `SLTI`, `SLTIU`, `XORI`, `ORI`, `ANDI`, `SLLI`, `SRLI`, `SRAI` |
-| **I-Type** | Loads | `LB`, `LH`, `LW`, `LBU`, `LHU` |
-| **I-Type** | Jump & Link Register | `JALR` |
-| **S-Type** | Stores | `SB`, `SH`, `SW` |
-| **B-Type** | Conditional Branches | `BEQ`, `BNE`, `BLT`, `BGE`, `BLTU`, `BGEU` |
-| **U-Type** | Upper Immediate | `LUI`, `AUIPC` |
-| **J-Type** | Unconditional Jump | `JAL` |
-
----
-
-## RISC-V Instruction Formats
-
-The decoder parses raw 32-bit words according to the official RISC-V specification:
-
-```text
-         31         25 24   20 19   15 14    12 11        7 6      0
-R-Type: |    funct7   |  rs2  |  rs1  | funct3 |    rd     | opcode |
-I-Type: |        imm[11:0]    |  rs1  | funct3 |    rd     | opcode |
-S-Type: |   imm[11:5] |  rs2  |  rs1  | funct3 | imm[4:0]  | opcode |
-B-Type: |12| imm[10:5]|  rs2  |  rs1  | funct3 |imm[4:1]|11| opcode |
-U-Type: |                  imm[31:12]          |    rd     | opcode |
-J-Type: |20|    imm[10:1]   |11|  imm[19:12]   |    rd     | opcode |
+On Ubuntu/WSL:
+```bash
+sudo apt update
+sudo apt install build-essential
 ```
+`build-essential` provides the GCC compiler and Make.
 
 ---
 
-## Project Structure
+## Getting started
 
-```text
-riscv-decoder/
-├── decoder.h        # Type definitions (enum, struct) and decoder prototypes
-├── decoder.c        # Core decoder functions & immediate extraction logic
-├── main.c           # Interactive CLI driver application
-├── Sample_Inst.txt  # Reference C-array containing test instruction hex codes
-├── Makefile         # Build script for gcc
-├── .gitignore       # Git ignore rules for build artifacts
-└── README.md        # Project documentation
-```
-
----
-
-## Getting Started
-
-### Prerequisites
-
-- A C compiler supporting **C11** (e.g., `gcc` or `clang`).
-- `make` (optional, for automated builds).
-- Linux, macOS, or Windows (via WSL, MinGW, or MSYS2).
-
-### Building the Project
-
-Clone the repository and compile using `make`:
-
+### 1. Clone the project
 ```bash
 git clone https://github.com/DharanidharanRavikumar/riscv-decoder.git
 cd riscv-decoder
+```
+
+### 2. Build the decoder
+```bash
 make
 ```
 
-Or compile manually using `gcc`:
-
-```bash
-gcc -Wall -Wextra -std=c11 main.c decoder.c -o decoder
-```
-
-To clean compiled binaries:
-
-```bash
-make clean
-```
-
----
-
-## Running the Decoder
-
-Launch the compiled executable:
-
+### 3. Run the decoder
 ```bash
 ./decoder
 ```
 
-Enter any 32-bit instruction as a hexadecimal value (without leading `0x` when prompted, or enter `0` to quit).
+The program accepts a 32-bit RISC-V machine instruction in hexadecimal:
+```text
+Instruction > 0x00212023
+```
+Enter `0` to exit.
 
 ---
 
-## Example Usage & Output
+## How it works
 
-### 1. Decoding an R-Type Instruction (`ADD x0, x6, x3`)
-**Input:** `003100B3`
+The decoder follows the instruction encoding defined by the official RV32I ISA specification.
+
+The 32-bit instruction is first masked to extract the 7-bit opcode:
+```c
+result.opcode = inp_inst & 0x7F;
+```
+
+The opcode is then used to determine the broad instruction format:
+
+| Opcode | Format | Description |
+| :--- | :--- | :--- |
+| `0x33` | **R-type** | Register-register operations (`ADD`, `SUB`, `SLL`, `SLT`...) |
+| `0x13` | **I-type** | Immediate arithmetic & shifts (`ADDI`, `SLLI`, `SRLI`...) |
+| `0x03` | **I-type** | Load operations (`LB`, `LH`, `LW`, `LBU`, `LHU`) |
+| `0x67` | **I-type** | Indirect jump (`JALR`) |
+| `0x23` | **S-type** | Memory stores (`SB`, `SH`, `SW`) |
+| `0x63` | **B-type** | Conditional branches (`BEQ`, `BNE`, `BLT`, `BGE`...) |
+| `0x37` | **U-type** | Load Upper Immediate (`LUI`) |
+| `0x17` | **U-type** | Add Upper Immediate to PC (`AUIPC`) |
+| `0x6F` | **J-type** | Unconditional jump and link (`JAL`) |
+
+The opcode alone does not always identify the exact instruction. For R-type instructions, `funct3` and `funct7` are also needed:
+
+```text
+opcode = 0x33 → R-type → funct3 → funct7 → ADD / SUB / SRL / SRA / ...
+```
+
+Different formats also arrange their immediate fields differently. A B-type immediate, for example, is reconstructed from several separated bit ranges rather than extracted as one continuous field.
+
+---
+
+## Architecture / Workflow
+
+The decoder follows a hierarchical decoding pipeline: a raw 32-bit instruction enters as hex input, is routed by opcode to a format-specific decoder, and comes back out as one filled-in result struct.
+
+```text
+┌───────────────────────┐
+│      USER INPUT       │
+│  32-bit instruction,  │
+│    entered as hex     │
+│    e.g. 0x00212023    │
+└───────────┬───────────┘
+            │
+            ▼
+┌───────────────────────┐
+│        main.c         │
+│    read + validate    │
+│ input, call decoder() │
+└───────────┬───────────┘
+            │ uint32_t instruction
+            ▼
+┌───────────────────────┐
+│       decoder()       │
+│ opcode = insn & 0x7F  │
+└───────────┬───────────┘
+            │
+            ▼
+┌───────────────────────┐
+│ OPCODE CLASSIFICATION │
+│ → instruction format  │
+└───────────┬───────────┘
+            │
+   ┌────────┴────────┬───────────────┐
+   ▼                 ▼               ▼
+┌───────────┐  ┌───────────┐  ┌───────────┐
+│   0x33    │  │0x13 / 0x03│  │   0x23    │
+│  R-type   │  │  I-type   │  │  S-type   │
+└─────┬─────┘  └─────┬─────┘  └─────┬─────┘
+      ▼              ▼               ▼
+decode_RType() decode_IType() decode_SType()
+      │              │               │
+   └──┴──────────────┼───────────────┘
+                     │
+ (0x63 B-type, 0x37/0x17 U-type, 0x6F J-type
+  route the same way, each to its own decoder)
+                     │
+                     ▼
+┌───────────────────────┐
+│    funct3 / funct7    │
+│   disambiguate the    │
+│   exact instruction   │
+│  (ADD / SUB / ADDI /  │
+│   LW / SW / BEQ / …)  │
+└───────────┬───────────┘
+            │
+            ▼
+┌───────────────────────┐
+│  decode_instruction   │
+│        result         │
+│  name, type, opcode,  │
+│ rd/rs1/rs2, funct3/7, │
+│   immediate, shamt    │
+└───────────┬───────────┘
+            │ return result
+            ▼
+┌───────────────────────┐
+│        main.c         │
+│        DISPLAY        │
+└───────────────────────┘
+```
+
+The key design principle: the decoder works in stages, not as one large lookup. Opcode narrows the format, format-specific fields narrow the exact instruction, and each stage is handled by its own function rather than one function trying to handle every case at once.
+
+---
+
+## Project structure
+
+```text
+riscv-decoder/
+├── main.c           # handles user input and displays the decoded result
+├── decoder.c        # decoding logic for each RV32I instruction format
+├── decoder.h        # shared struct, type definitions, declarations
+├── Makefile         # build script
+├── Sample_Inst.txt  # sample machine instructions for testing
+├── assets/          # screenshot and visual demos
+└── .gitignore
+```
+
+`decoder.c` splits decoding into one function per format:
+`decode_RType()`, `decode_IType()`, `decode_SType()`, `decode_BType()`, `decode_UType()`, and `decode_JType()`.
+
+---
+
+## Relationship to Project 1
+
+This project builds on my previous [RISC-V RV32I Instruction Simulator](https://github.com/DharanidharanRavikumar/riscv-simulator).
+
+- **Project 1 — Instruction Simulator:** fetches, decodes, and executes RISC-V machine instructions.
+- **Project 2 — Instruction Decoder:** focuses specifically on interpreting the 32-bit instruction encoding and reconstructing its fields.
+
+Keeping decoding separate makes the instruction encoding logic easier to inspect, test, and reuse in future architecture projects.
+
+---
+
+## Example
 
 ```text
 ========================================
@@ -149,146 +222,76 @@ Enter a 32-bit instruction in hexadecimal.
 Example: 0x003100B3
 Enter 0 to exit.
 
-Instruction > 0x003100B3
+Instruction > 0x00212023
 
 ----------------------------------------
            DECODED INSTRUCTION
 ----------------------------------------
-Original Raw instruction : 0x003100B3
-Instruction     : ADD
-Type            : R
-Opcode          : 0x33
-rd              : x1
+Original Raw instruction : 0x00212023
+Instruction     : SW
+Type            : S
+Opcode          : 0x23
+rd              : x0
 rs1             : x2
-rs2             : x3
-funct3          : 0x00
+rs2             : x2
+funct3          : 0x02
 funct7          : 0x00
 Immediate       : 0
 shamt           : 0
 ----------------------------------------
 ```
 
-### 2. Decoding an I-Type Instruction (`ADDI`)
-**Input:** `00A10093`
-
-```text
-Instruction > 0x00A10093
-
-----------------------------------------
-           DECODED INSTRUCTION
-----------------------------------------
-Original Raw instruction : 0x00A10093
-Instruction     : ADDI
-Type            : I
-Opcode          : 0x13
-rd              : x1
-rs1             : x2
-rs2             : x0
-funct3          : 0x00
-funct7          : 0x00
-Immediate       : 10
-shamt           : 0
-----------------------------------------
-```
-
-### 3. Decoding a Branch Instruction (`BEQ`)
-**Input:** `00208863`
-
-```text
-Instruction > 0x00208863
-
-----------------------------------------
-           DECODED INSTRUCTION
-----------------------------------------
-Original Raw instruction : 0x00208863
-Instruction     : BEQ
-Type            : B
-Opcode          : 0x63
-rd              : x0
-rs1             : x1
-rs2             : x2
-funct3          : 0x00
-funct7          : 0x00
-Immediate       : 16
-shamt           : 0
-----------------------------------------
-```
+> **Note:** Some displayed fields may not be meaningful for the selected instruction format. For example, S-type instructions do not contain an `rd` field.
 
 ---
 
-## API Reference (Library Usage)
+## Challenges I ran into
 
-You can easily embed `decoder.c` and `decoder.h` into your own RISC-V simulator or emulator:
+Building the decoder was useful because several problems forced me to understand the instruction encoding rather than simply translating the encoding table into C code:
 
-```c
-#include "decoder.h"
-#include <stdio.h>
+### 1. The same 32 bits mean different things for different formats
+- **The Mistake:** At first, I approached every instruction as if fields like `rd`, `rs1`, `rs2`, `funct3`, `funct7`, and `immediate` were common to all of them. This broke down when implementing S-, B-, U-, and J-type instructions. S-type has no `rd` field, while U-type uses a 20-bit immediate instead.
+- **How I found it:** While writing the format-specific decoder functions, I kept hitting fields that were meaningless for certain formats. Comparing the actual RV32I encoding layouts with my structure made the problem obvious.
+- **The Fix:** I separated decoding into one function per format. The main decoder first determines the broad format from the opcode, then calls the matching function. This changed my understanding of decoding from *"extract all fields"* to *"interpret the 32 bits according to its format."*
 
-int main(void) {
-    uint32_t raw_inst = 0x010000EF; // JAL x1, offset
-    decode_instruction decoded = decoder(raw_inst);
+### 2. Reconstructing a split immediate
+- **The Mistake:** I expected an immediate to always sit in one continuous range of bits, like the I-type immediate does. That assumption failed on B-type instructions, where the immediate is scattered:
+  - `imm[12]` → bit 31
+  - `imm[10:5]` → bits 30:25
+  - `imm[4:1]` → bits 11:8
+  - `imm[11]` → bit 7
+- **How I found it:** During B-type testing, the decoder produced an incorrect immediate. Tracing the extraction code back against the encoding table showed the immediate had to be reconstructed from several separate bit ranges, not read as one piece.
+- **The Fix:** I extracted each part independently, then combined them into the final immediate before sign-extending.
 
-    printf("Decoded: %s\n", decoded.instruction_name);
-    printf("Format : %s-Type\n", type_name(decoded.type));
-    printf("Target : rd = x%d, offset = %d\n", decoded.rd, decoded.immediate);
-
-    return 0;
-}
-```
-
-### Data Structure (`decode_instruction`)
-
-Defined in `decoder.h`:
-
-```c
-typedef struct {
-    uint32_t og_inp_inst;          // Original 32-bit instruction
-    InstructionType type;          // TYPE_R, TYPE_I, TYPE_S, TYPE_B, TYPE_U, TYPE_J
-    int32_t immediate;             // Sign-extended reconstructed immediate value
-    uint8_t opcode;                // 7-bit opcode field
-    uint8_t func3;                 // 3-bit funct3 field
-    uint8_t func7;                 // 7-bit funct7 field
-    uint8_t rd;                    // Destination register index (0-31)
-    uint8_t rs1;                   // Source register 1 index (0-31)
-    uint8_t rs2;                   // Source register 2 index (0-31)
-    uint8_t shamt;                 // Shift amount for shift instructions (SLLI, SRLI, SRAI)
-    const char *instruction_name;  // Mnemonic string (e.g., "ADD", "LW", "BNE")
-} decode_instruction;
-```
+### 3. Opcode alone isn't enough to identify an instruction
+- **The Mistake:** I initially treated the opcode as if it directly named the instruction, assuming `0x33` meant `ADD`. It doesn't; several R-type instructions share that same opcode.
+- **How I found it:** While implementing the R-type decoder, I found `ADD`, `SUB`, `SRL`, and `SRA` couldn't be told apart by opcode alone:
+  - `funct3 = 0x0`, `funct7 = 0x00` → `ADD`
+  - `funct3 = 0x0`, `funct7 = 0x20` → `SUB`
+  - `funct3 = 0x5`, `funct7 = 0x00` → `SRL`
+  - `funct3 = 0x5`, `funct7 = 0x20` → `SRA`
+  
+  The same pattern showed up again with I-type shifts (`SRLI` vs `SRAI`).
+- **The Fix:** I structured the decoder as a hierarchical decision:
+  ```text
+  opcode → format → funct3 → funct7 (when needed) → exact instruction
+  ```
+  This makes the decoder's structure mirror the actual structure of the RISC-V ISA, rather than treating identification as a single lookup.
 
 ---
 
-## Test Vectors
+## What I'd add next
 
-The file `Sample_Inst.txt` provides verified machine code samples across all categories:
-
-- **R-Type**: `0x003100B3` (ADD), `0x403100B3` (SUB), `0x003110B3` (SLL), `0x003120B3` (SLT)...
-- **I-Type Arithmetic**: `0x00A10093` (ADDI), `0x00311093` (SLLI), `0x40315093` (SRAI)...
-- **Loads**: `0x00010083` (LB), `0x00012083` (LW), `0x00014083` (LBU)...
-- **Stores**: `0x00310023` (SB), `0x00311023` (SH), `0x00312023` (SW)...
-- **Branches**: `0x00208863` (BEQ), `0x00209863` (BNE), `0x0020C863` (BLT)...
-- **Upper Immediate**: `0x123450B7` (LUI), `0x12345097` (AUIPC)...
-- **Jumps**: `0x010000EF` (JAL), `0x000100E7` (JALR)...
-
----
-
-## Roadmap
-
-- [ ] Full assembly string disassembly output formatting (e.g., `add x1, x2, x3`).
-- [ ] Support for **RV32M** (Integer Multiplication and Division) extension.
-- [ ] Support for **CSR** (Control and Status Register) instructions (`SYSTEM` opcode `0x73`).
-- [ ] Batch file input mode to disassemble ELF / binary / raw hex dump files directly.
-
----
-
-## Author
-
-- **Dharanidharan R**
-- GitHub: [@DharanidharanRavikumar](https://github.com/DharanidharanRavikumar)
-- Email: [dharanidharanr12@gmail.com](mailto:dharanidharanr12@gmail.com)
+- Complete RV32I instruction coverage
+- Automated instruction-level test cases
+- Binary input support (not just hex)
+- Validation for illegal or unsupported encodings
+- More systematic immediate/sign-extension tests
+- Extension toward RV32M and RV64 decoding
+- Integration with my [RISC-V instruction simulator](https://github.com/DharanidharanRavikumar/riscv-simulator)
 
 ---
 
 ## License
 
-This project is open-source and available under the [MIT License](LICENSE).
+This project is licensed under the [MIT License](LICENSE).
