@@ -112,70 +112,28 @@ Different formats also arrange their immediate fields differently. A B-type imme
 
 The decoder follows a hierarchical decoding pipeline: a raw 32-bit instruction enters as hex input, is routed by opcode to a format-specific decoder, and comes back out as one filled-in result struct.
 
-```text
-┌───────────────────────┐
-│      USER INPUT       │
-│  32-bit instruction,  │
-│    entered as hex     │
-│    e.g. 0x00212023    │
-└───────────┬───────────┘
-            │
-            ▼
-┌───────────────────────┐
-│        main.c         │
-│    read + validate    │
-│ input, call decoder() │
-└───────────┬───────────┘
-            │ uint32_t instruction
-            ▼
-┌───────────────────────┐
-│       decoder()       │
-│ opcode = insn & 0x7F  │
-└───────────┬───────────┘
-            │
-            ▼
-┌───────────────────────┐
-│ OPCODE CLASSIFICATION │
-│ → instruction format  │
-└───────────┬───────────┘
-            │
-   ┌────────┴────────┬───────────────┐
-   ▼                 ▼               ▼
-┌───────────┐  ┌───────────┐  ┌───────────┐
-│   0x33    │  │0x13 / 0x03│  │   0x23    │
-│  R-type   │  │  I-type   │  │  S-type   │
-└─────┬─────┘  └─────┬─────┘  └─────┬─────┘
-      ▼              ▼               ▼
-decode_RType() decode_IType() decode_SType()
-      │              │               │
-   └──┴──────────────┼───────────────┘
-                     │
- (0x63 B-type, 0x37/0x17 U-type, 0x6F J-type
-  route the same way, each to its own decoder)
-                     │
-                     ▼
-┌───────────────────────┐
-│    funct3 / funct7    │
-│   disambiguate the    │
-│   exact instruction   │
-│  (ADD / SUB / ADDI /  │
-│   LW / SW / BEQ / …)  │
-└───────────┬───────────┘
-            │
-            ▼
-┌───────────────────────┐
-│  decode_instruction   │
-│        result         │
-│  name, type, opcode,  │
-│ rd/rs1/rs2, funct3/7, │
-│   immediate, shamt    │
-└───────────┬───────────┘
-            │ return result
-            ▼
-┌───────────────────────┐
-│        main.c         │
-│        DISPLAY        │
-└───────────────────────┘
+```mermaid
+flowchart TD
+    A["User Input<br/><code>0x00212023</code>"] --> B["main.c<br/>Read & Validate Hex"]
+    B --> C["decoder()<br/>Extract Opcode: <code>insn & 0x7F</code>"]
+    C --> D{"Opcode Classification"}
+    
+    D -->|0x33| R["decode_RType()"]
+    D -->|0x13 / 0x03 / 0x67| I["decode_IType()"]
+    D -->|0x23| S["decode_SType()"]
+    D -->|0x63| B_TYPE["decode_BType()"]
+    D -->|0x37 / 0x17| U["decode_UType()"]
+    D -->|0x6F| J["decode_JType()"]
+    
+    R --> F["Disambiguate via<br/><code>funct3</code> & <code>funct7</code>"]
+    I --> F
+    S --> F
+    B_TYPE --> F
+    U --> F
+    J --> F
+    
+    F --> G["decode_instruction<br/>Populated Result Struct"]
+    G --> H["main.c<br/>Formatted Terminal Display"]
 ```
 
 The key design principle: the decoder works in stages, not as one large lookup. Opcode narrows the format, format-specific fields narrow the exact instruction, and each stage is handled by its own function rather than one function trying to handle every case at once.
@@ -245,38 +203,24 @@ shamt           : 0
 
 ---
 
-## Challenges I ran into
+## Challenges I Ran Into
 
-Building the decoder was useful because several problems forced me to understand the instruction encoding rather than simply translating the encoding table into C code:
+Writing a bit-level instruction decoder in C requires translating hardware bitfields into software logic. Here are three tricky implementation challenges and bugs I ran into while writing the C code and how I solved them:
 
-### 1. The same 32 bits mean different things for different formats
-- **The Mistake:** At first, I approached every instruction as if fields like `rd`, `rs1`, `rs2`, `funct3`, `funct7`, and `immediate` were common to all of them. This broke down when implementing S-, B-, U-, and J-type instructions. S-type has no `rd` field, while U-type uses a 20-bit immediate instead.
-- **How I found it:** While writing the format-specific decoder functions, I kept hitting fields that were meaningless for certain formats. Comparing the actual RV32I encoding layouts with my structure made the problem obvious.
-- **The Fix:** I separated decoding into one function per format. The main decoder first determines the broad format from the opcode, then calls the matching function. This changed my understanding of decoding from *"extract all fields"* to *"interpret the 32 bits according to its format."*
+### 1. The Unsigned vs. Signed Immediate Trap (Arithmetic Right Shifts in C)
+- **The Mistake:** In RISC-V, immediates (such as I-type offsets) are signed two's complement integers. In C, raw machine instructions are stored as unsigned 32-bit integers (`uint32_t`). When I first extracted the 12-bit I-type immediate using `inp_inst >> 20`, C performed a logical (zero-filling) right shift instead of an arithmetic (sign-preserving) shift. As a result, negative offsets (like `-4` in load/branch offsets) displayed as large positive numbers like `4092` instead of negative integers.
+- **How I found it:** During testing with negative offsets, the raw immediate printed as a large 12-bit unsigned value rather than a negative signed integer.
+- **The Fix:** In C, arithmetic right shifts only happen on signed types. I solved this by explicitly casting to a signed integer before shifting: `(int32_t)inp_inst >> 20`. For S-type and B-type immediates where bitfields are spliced together manually, I used the shift-left then arithmetic-shift-right idiom `(int32_t)(immediate << 19) >> 19` so C reliably sign-extends the top bits.
 
-### 2. Reconstructing a split immediate
-- **The Mistake:** I expected an immediate to always sit in one continuous range of bits, like the I-type immediate does. That assumption failed on B-type instructions, where the immediate is scattered:
-  - `imm[12]` → bit 31
-  - `imm[10:5]` → bits 30:25
-  - `imm[4:1]` → bits 11:8
-  - `imm[11]` → bit 7
-- **How I found it:** During B-type testing, the decoder produced an incorrect immediate. Tracing the extraction code back against the encoding table showed the immediate had to be reconstructed from several separate bit ranges, not read as one piece.
-- **The Fix:** I extracted each part independently, then combined them into the final immediate before sign-extending.
+### 2. Reconstructing Non-Contiguous Immediate Bits (B-Type & J-Type Bit-Splicing)
+- **The Mistake:** In RISC-V, branch (B-type) and jump (J-type) target addresses are always multiples of 2 bytes, so bit 0 is omitted from the encoding. Furthermore, RISC-V intentionally scrambles the immediate layout in hardware so that the sign bit always stays fixed at bit 31 across all formats to optimize hardware multiplexers. When writing `decode_BType()`, I initially miscalculated the bit shifts when piecing `imm[12]`, `imm[11]`, `imm[10:5]`, and `imm[4:1]` back together. A branch instruction with an offset of 16 was decoding to garbage because one shift offset was off by one.
+- **How I found it:** Stepping through sample branch instructions like `BEQ` (`0x00208863`), the reconstructed branch target offset did not match the expected assembler offset.
+- **The Fix:** Instead of trying to combine the scattered bits in a single complicated one-liner, I extracted each piece individually into its own variable (`imm_12`, `imm_11`, `imm_10_5`, `imm_4_1`), verified each position against the RISC-V spec, and then assembled the full immediate before sign-extending.
 
-### 3. Opcode alone isn't enough to identify an instruction
-- **The Mistake:** I initially treated the opcode as if it directly named the instruction, assuming `0x33` meant `ADD`. It doesn't; several R-type instructions share that same opcode.
-- **How I found it:** While implementing the R-type decoder, I found `ADD`, `SUB`, `SRL`, and `SRA` couldn't be told apart by opcode alone:
-  - `funct3 = 0x0`, `funct7 = 0x00` → `ADD`
-  - `funct3 = 0x0`, `funct7 = 0x20` → `SUB`
-  - `funct3 = 0x5`, `funct7 = 0x00` → `SRL`
-  - `funct3 = 0x5`, `funct7 = 0x20` → `SRA`
-  
-  The same pattern showed up again with I-type shifts (`SRLI` vs `SRAI`).
-- **The Fix:** I structured the decoder as a hierarchical decision:
-  ```text
-  opcode → format → funct3 → funct7 (when needed) → exact instruction
-  ```
-  This makes the decoder's structure mirror the actual structure of the RISC-V ISA, rather than treating identification as a single lookup.
+### 3. Handling Shift Instructions Inside I-Type (The `funct7` Exception)
+- **The Mistake:** Standard I-type instructions (like `ADDI` or `LW`) use all 12 bits [31:20] for a signed immediate and do not have a `funct7` field. However, shift instructions (`SLLI`, `SRLI`, and `SRAI`) are special: in RV32I, shifts are at most 31 bits, so only bits [24:20] are used for the shift amount (`shamt`). The remaining upper bits [31:25] are repurposed as a `funct7` discriminant to distinguish logical shifts (`SRLI`, `0x00`) from arithmetic shifts (`SRAI`, `0x20`). My initial I-type decoder treated all `0x13` opcodes uniformly, which caused `SRLI` and `SRAI` to collide and left garbage in the `shamt` field.
+- **How I found it:** Testing `0x40315093` (`SRAI`) resulted in the instruction being misidentified or showing the wrong shift value because `funct7` wasn't being inspected.
+- **The Fix:** Inside `decode_IType()`, I added dedicated handling for shift operations (`funct3 == 0x1` and `funct3 == 0x5`) that extracts `inp_inst & 0x1F` for `shamt`, and checks `funct7` to differentiate `SRLI` from `SRAI`.
 
 ---
 
