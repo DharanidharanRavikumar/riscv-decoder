@@ -100,6 +100,8 @@ typedef struct {
 
 ## Decoding Workflow
 
+![Decoding Pipeline Dataflow](assets/architecture.svg)
+
 The decoding pipeline operates hierarchically rather than through flat table searches:
 
 1. **Opcode Masking:** The primary 7-bit opcode (`inp_inst & 0x7F`) routes execution to a format-specific handler (`decode_RType`, `decode_IType`, `decode_SType`, `decode_BType`, `decode_UType`, `decode_JType`).
@@ -182,7 +184,7 @@ riscv-decoder/
 ├── main.c           # CLI interactive loop & diagnostic printout
 ├── Makefile         # GCC build rules (-Wall -Wextra -std=c11)
 ├── Sample_Inst.txt  # Curated test instruction set
-├── assets/          # Terminal demo screenshot
+├── assets/          # Terminal demo & vector architecture diagram
 └── .gitignore
 ```
 
@@ -200,3 +202,4 @@ riscv-decoder/
 ## License
 
 This project is open-source under the [MIT License](LICENSE).
+

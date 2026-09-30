@@ -1,0 +1,176 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 560" width="100%" height="100%">
+  <defs>
+    <style>
+      .bg { fill: #0d1117; }
+      .card { fill: #161b22; stroke: #30363d; stroke-width: 1.5; rx: 8px; }
+      .subcard { fill: #21262d; stroke: #30363d; stroke-width: 1; rx: 6px; }
+      .title { fill: #58a6ff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 16px; font-weight: 600; letter-spacing: 0.5px; }
+      .subtitle { fill: #8b949e; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 11px; }
+      .box-label { fill: #c9d1d9; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 13px; font-weight: 600; }
+      .box-desc { fill: #8b949e; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 11px; }
+      .code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; font-size: 11px; }
+      .bit-title { fill: #ffffff; font-family: "SFMono-Regular", Consolas, monospace; font-size: 12px; font-weight: bold; text-anchor: middle; }
+      .bit-range { fill: #8b949e; font-family: "SFMono-Regular", Consolas, monospace; font-size: 10px; text-anchor: middle; }
+      .bus-line { stroke: #58a6ff; stroke-width: 1.5; fill: none; stroke-linejoin: round; }
+      .bus-imm { stroke: #d29922; stroke-width: 1.5; fill: none; stroke-linejoin: round; }
+      .bus-ctrl { stroke: #a371f7; stroke-width: 1.5; fill: none; stroke-dasharray: 4,3; }
+      .arrow { fill: #58a6ff; }
+      .arrow-imm { fill: #d29922; }
+      .arrow-ctrl { fill: #a371f7; }
+      .tag { font-family: "SFMono-Regular", Consolas, monospace; font-size: 9px; font-weight: 600; padding: 2px 4px; }
+    </style>
+    <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#58a6ff"/>
+    </marker>
+    <marker id="arrow-imm" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#d29922"/>
+    </marker>
+    <marker id="arrow-ctrl" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#a371f7"/>
+    </marker>
+    <linearGradient id="grad-f7" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#8957e5" stop-opacity="0.35"/><stop offset="100%" stop-color="#8957e5" stop-opacity="0.1"/></linearGradient>
+    <linearGradient id="grad-rs2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1f6feb" stop-opacity="0.35"/><stop offset="100%" stop-color="#1f6feb" stop-opacity="0.1"/></linearGradient>
+    <linearGradient id="grad-rs1" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#238636" stop-opacity="0.35"/><stop offset="100%" stop-color="#238636" stop-opacity="0.1"/></linearGradient>
+    <linearGradient id="grad-f3" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#da3633" stop-opacity="0.35"/><stop offset="100%" stop-color="#da3633" stop-opacity="0.1"/></linearGradient>
+    <linearGradient id="grad-rd" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#3fb950" stop-opacity="0.35"/><stop offset="100%" stop-color="#3fb950" stop-opacity="0.1"/></linearGradient>
+    <linearGradient id="grad-op" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#d29922" stop-opacity="0.35"/><stop offset="100%" stop-color="#d29922" stop-opacity="0.1"/></linearGradient>
+  </defs>
+
+  <!-- Background Canvas -->
+  <rect width="920" height="560" rx="12" class="bg" stroke="#30363d" stroke-width="1.5"/>
+
+  <!-- Top Title -->
+  <text x="40" y="38" class="title">RISC-V RV32I INSTRUCTION DECODING PIPELINE</text>
+  <text x="40" y="55" class="subtitle">Bitfield Extraction, Immediate Reshuffling &amp; Hierarchical Mnemonic Resolution</text>
+
+  <!-- 32-bit Instruction Register Frame -->
+  <rect x="40" y="75" width="840" height="60" rx="6" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+
+  <!-- Bitfield slices -->
+  <!-- funct7 [31:25] -->
+  <rect x="42" y="77" width="168" height="56" rx="4" fill="url(#grad-f7)" stroke="#8957e5" stroke-width="1"/>
+  <text x="126" y="102" class="bit-title">funct7 / imm</text>
+  <text x="126" y="122" class="bit-range">[31:25] (7b)</text>
+
+  <!-- rs2 [24:20] -->
+  <rect x="214" y="77" width="124" height="56" rx="4" fill="url(#grad-rs2)" stroke="#1f6feb" stroke-width="1"/>
+  <text x="276" y="102" class="bit-title">rs2 / imm</text>
+  <text x="276" y="122" class="bit-range">[24:20] (5b)</text>
+
+  <!-- rs1 [19:15] -->
+  <rect x="342" y="77" width="124" height="56" rx="4" fill="url(#grad-rs1)" stroke="#238636" stroke-width="1"/>
+  <text x="404" y="102" class="bit-title">rs1</text>
+  <text x="404" y="122" class="bit-range">[19:15] (5b)</text>
+
+  <!-- funct3 [14:12] -->
+  <rect x="470" y="77" width="94" height="56" rx="4" fill="url(#grad-f3)" stroke="#da3633" stroke-width="1"/>
+  <text x="517" y="102" class="bit-title">funct3</text>
+  <text x="517" y="122" class="bit-range">[14:12] (3b)</text>
+
+  <!-- rd [11:7] -->
+  <rect x="568" y="77" width="124" height="56" rx="4" fill="url(#grad-rd)" stroke="#3fb950" stroke-width="1"/>
+  <text x="630" y="102" class="bit-title">rd / imm</text>
+  <text x="630" y="122" class="bit-range">[11:7] (5b)</text>
+
+  <!-- opcode [6:0] -->
+  <rect x="696" y="77" width="182" height="56" rx="4" fill="url(#grad-op)" stroke="#d29922" stroke-width="1"/>
+  <text x="787" y="102" class="bit-title">opcode</text>
+  <text x="787" y="122" class="bit-range">[6:0] (7b)</text>
+
+  <!-- Signal Lines From Top Register -->
+  <!-- opcode line down to Opcode Classifier -->
+  <path d="M 787 135 L 787 195" class="bus-line" stroke="#d29922" marker-end="url(#arrow-imm)"/>
+
+  <!-- rs1 down to Register Extraction -->
+  <path d="M 404 135 L 404 205" class="bus-line" marker-end="url(#arrow)"/>
+
+  <!-- rs2 down to Register Extraction -->
+  <path d="M 276 135 L 276 175 L 360 175 L 360 205" class="bus-line" marker-end="url(#arrow)"/>
+
+  <!-- rd down to Register Extraction -->
+  <path d="M 630 135 L 630 175 L 450 175 L 450 205" class="bus-line" marker-end="url(#arrow)"/>
+
+  <!-- Immediate taps to Immediate Generator -->
+  <path d="M 126 135 L 126 205" class="bus-imm" marker-end="url(#arrow-imm)"/>
+
+  <!-- funct3 / funct7 lines down to Mnemonic Resolver -->
+  <path d="M 517 135 L 517 315 L 620 315" class="bus-ctrl" marker-end="url(#arrow-ctrl)"/>
+  <path d="M 85 135 L 85 160 L 535 160 L 535 325 L 620 325" class="bus-ctrl" marker-end="url(#arrow-ctrl)"/>
+
+  <!-- MIDDLE ROW: FUNCTIONAL UNITS -->
+
+  <!-- 1. Immediate Generator Unit (Left) -->
+  <rect x="40" y="210" width="220" height="150" class="card"/>
+  <text x="55" y="235" class="box-label" fill="#f0883e">Immediate Reconstructor</text>
+  <text x="55" y="252" class="box-desc">Non-contiguous bit splicing</text>
+  <rect x="55" y="265" width="190" height="24" class="subcard"/>
+  <text x="65" y="281" class="code" fill="#c9d1d9">B-Type: imm[12|11|10:5|4:1]</text>
+  <rect x="55" y="295" width="190" height="24" class="subcard"/>
+  <text x="65" y="311" class="code" fill="#c9d1d9">J-Type: imm[20|10:1|11|19:12]</text>
+  <text x="55" y="342" class="code" fill="#8b949e">&#x2192; Sign-extend to 32-bit (int32_t)</text>
+
+  <!-- 2. Register Specifiers (Center) -->
+  <rect x="300" y="210" width="220" height="95" class="card"/>
+  <text x="315" y="235" class="box-label" fill="#58a6ff">Register Extractor</text>
+  <text x="315" y="252" class="box-desc">Address masking (0–31)</text>
+  <text x="315" y="276" class="code" fill="#c9d1d9">rs1 = (insn &gt;&gt; 15) &amp; 0x1F</text>
+  <text x="315" y="293" class="code" fill="#c9d1d9">rs2 = (insn &gt;&gt; 20) &amp; 0x1F</text>
+
+  <!-- 3. Opcode Classifier (Right) -->
+  <rect x="670" y="200" width="210" height="85" class="card"/>
+  <text x="685" y="225" class="box-label" fill="#d29922">Format Router</text>
+  <text x="685" y="242" class="box-desc">Opcode = (insn &amp; 0x7F)</text>
+  <text x="685" y="267" class="code" fill="#58a6ff">&#x2192; R | I | S | B | U | J Type</text>
+
+  <!-- Control line from Opcode Router to Immediate Generator & Mnemonic Resolver -->
+  <path d="M 670 240 L 580 240 L 580 230 L 260 230" class="bus-ctrl" marker-end="url(#arrow-ctrl)"/>
+  <path d="M 775 285 L 775 305" class="bus-ctrl" marker-end="url(#arrow-ctrl)"/>
+
+  <!-- 4. Mnemonic Resolver Unit (Center-Right Lower) -->
+  <rect x="625" y="310" width="255" height="75" class="card"/>
+  <text x="640" y="333" class="box-label" fill="#a371f7">Mnemonic Resolver</text>
+  <text x="640" y="350" class="box-desc">Disambiguate via funct3 &amp; funct7</text>
+  <text x="640" y="371" class="code" fill="#7ee787">ADD, SUB, LW, SW, BEQ, JAL, ...</text>
+
+  <!-- Bus Lines Down to Final Struct -->
+  <!-- Imm out -->
+  <path d="M 150 360 L 150 435" class="bus-imm" marker-end="url(#arrow-imm)"/>
+  <!-- Regs out -->
+  <path d="M 410 305 L 410 435" class="bus-line" marker-end="url(#arrow)"/>
+  <!-- Mnemonic out -->
+  <path d="M 750 385 L 750 435" class="bus-line" stroke="#a371f7" marker-end="url(#arrow-ctrl)"/>
+
+  <!-- BOTTOM: OUTPUT ARCHITECTURAL STRUCT -->
+  <rect x="40" y="440" width="840" height="90" rx="8" fill="#161b22" stroke="#238636" stroke-width="1.5"/>
+  <text x="60" y="465" class="box-label" fill="#7ee787">Decoded Representation  (decode_instruction)</text>
+  <text x="60" y="482" class="box-desc">Populated C architectural struct ready for simulation, trace diagnostics, or disassembly</text>
+
+  <g transform="translate(60, 495)">
+    <rect x="0" y="0" width="105" height="24" rx="4" fill="#21262d" stroke="#30363d"/>
+    <text x="10" y="16" class="code" fill="#7ee787">name: "SW"</text>
+
+    <rect x="115" y="0" width="85" height="24" rx="4" fill="#21262d" stroke="#30363d"/>
+    <text x="125" y="16" class="code" fill="#58a6ff">type: TYPE_S</text>
+
+    <rect x="210" y="0" width="95" height="24" rx="4" fill="#21262d" stroke="#30363d"/>
+    <text x="220" y="16" class="code" fill="#d29922">opcode: 0x23</text>
+
+    <rect x="315" y="0" width="65" height="24" rx="4" fill="#21262d" stroke="#30363d"/>
+    <text x="325" y="16" class="code" fill="#c9d1d9">rd: x0</text>
+
+    <rect x="390" y="0" width="65" height="24" rx="4" fill="#21262d" stroke="#30363d"/>
+    <text x="400" y="16" class="code" fill="#c9d1d9">rs1: x2</text>
+
+    <rect x="465" y="0" width="65" height="24" rx="4" fill="#21262d" stroke="#30363d"/>
+    <text x="475" y="16" class="code" fill="#c9d1d9">rs2: x2</text>
+
+    <rect x="540" y="0" width="85" height="24" rx="4" fill="#21262d" stroke="#30363d"/>
+    <text x="550" y="16" class="code" fill="#c9d1d9">funct3: 0x02</text>
+
+    <rect x="635" y="0" width="105" height="24" rx="4" fill="#21262d" stroke="#30363d"/>
+    <text x="645" y="16" class="code" fill="#f0883e">imm: 0 (signed)</text>
+
+    <rect x="750" y="0" width="65" height="24" rx="4" fill="#21262d" stroke="#30363d"/>
+    <text x="760" y="16" class="code" fill="#8b949e">shamt: 0</text>
+  </g>
+</svg>
